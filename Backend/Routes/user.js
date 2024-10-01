@@ -5,6 +5,7 @@ const z = require("zod");
 const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const User = require("../Models/user");
+const Account = require("../Models/Balence");
 
 const signupSchema = z.object({
   username: z.string().email(),
@@ -36,11 +37,16 @@ router.post("/signup", async (req, res) => {
     const saltRounds = 10;
 
     const hashedPassword = await bcrypt.hash(data.password, saltRounds);
-    console.log(hashedPassword);
+
 
     const newUser = new User({ ...data, password: hashedPassword });
 
     await newUser.save();
+
+    await Account.create({
+      userId: newUser._id,
+      balance: 10000,
+    });
     const token = jwt.sign({ userId: newUser._id }, process.env.JWT_SECRET, {
       expiresIn: "21d",
     });

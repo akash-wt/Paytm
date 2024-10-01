@@ -6,7 +6,7 @@ const jwt = require("jsonwebtoken");
 const bcrypt = require("bcrypt");
 const User = require("../Models/user");
 const Account = require("../Models/Balence");
-const authMiddleware=require("../authorization");
+const authMiddleware = require("../authorization");
 
 const signupSchema = z.object({
   username: z.string().email(),
@@ -31,7 +31,7 @@ router.post("/signup", async (req, res) => {
     });
 
     if (userExist) {
-      return res.status(411).json({
+      return res.status(409).json({
         message: "Email already exists",
       });
     }
@@ -57,7 +57,7 @@ router.post("/signup", async (req, res) => {
       token: token,
     });
   } catch (e) {
-    res.status(500).json({ message: " enternal sever error", error: e });
+    res.status(500).json({ message: " Internal sever error", error: e });
   }
 });
 
@@ -71,26 +71,25 @@ const signInSchema = z.object({
 router.post("/signin", async (req, res) => {
   const { success, data, error } = signInSchema.safeParse(req.body);
   if (!success) {
-    return res.status(411).json({
+    return res.status(400).json({
       message: "invalid inputs",
       error: error.errors,
     });
   }
   const user = await User.findOne({ username: data.username });
   if (!user) {
-    return res.status(411).json({
+    return res.status(404).json({
       message: "user not found ",
     });
   }
 
   const rightPassword = await bcrypt.compare(data.password, user.password);
-  if(!rightPassword){
+  if (!rightPassword) {
     console.log("password ", rightPassword);
-    return res.json({
-      message:"wrong password"
-    })
+    return res.status(401).json({
+      message: "wrong password",
+    });
   }
-
 
   if (rightPassword) {
     const token = jwt.sign({ userId: user._id }, process.env.JWT_SECRET, {
@@ -103,37 +102,39 @@ router.post("/signin", async (req, res) => {
     });
   }
 
-  res.status(411).json({
+  res.status(409).json({
     message: "Error while logging in",
   });
 });
 
 // update
-const updateSchema=z.object({
-  password:z.string().min(6).optional(),
-  lastName:z.string().optional(),
-  firstName:z.string().optional()
-})
+const updateSchema = z.object({
+  password: z.string().min(6).optional(),
+  lastName: z.string().optional(),
+  firstName: z.string().optional(),
+});
 router.post("/update", authMiddleware, async (req, res) => {
+  const { success, data, error } = updateSchema.safeParse(req.body);
+  console.log(data);
 
-  console.log(req.body);
-  
-    const {success,data,error}=updateSchema.safeParse(req.body);
-    if(!success){
-      return res.status(411).json({
-        message:"invalid inputs",
-        error:error.errors
-      })
-    }
+  if (!success) {
+    return res.status(400).json({
+      message: "invalid inputs",
+      error: error.errors,
+    });
+  }
 
-    const user=await User.findByIdAndUpdate(req.userId,data);
-console.log(user);
+  const saltRounds = 10;
+  if (data.password) {
+    data.password = await bcrypt.hash(data.password, saltRounds);
+  }
 
+  const user = await User.findByIdAndUpdate(req.userId, data);
+  console.log(user);
 
-    res.json({
-      message:"updated successfully"
-    })
-
+  res.json({
+    message: "updated successfully",
+  });
 });
 
 module.exports = router;

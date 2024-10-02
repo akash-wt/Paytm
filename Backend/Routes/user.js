@@ -137,4 +137,51 @@ router.post("/update", authMiddleware, async (req, res) => {
   });
 });
 
+
+// bulk 
+
+
+router.get("/bulk", async (req, res) => {
+  const filter= req.query.filter || " ";
+  try {
+    let users = await User.find({
+      $or: [
+        {
+          firstName: {
+            $regex: filter,
+            $options: "i",
+          },
+        },
+        {
+          lastName: {
+            $regex: filter,
+            $options: "i",
+          },
+        },
+        {
+          username: {
+            $regex: filter,
+            $options: "i",
+          },
+        },
+      ],
+    });
+
+    console.log(users);
+
+    return res.status(200).json({
+      users: users.map((user) => ({
+        _id: user._id,
+        username: user.username,
+        firstName: user.firstName,
+        lastName: user.lastName,
+      })),
+    });
+  } catch (e) {
+    return res
+      .status(500)
+      .json({ message: " Error while fetching data", error: e });
+  }
+});
+
 module.exports = router;

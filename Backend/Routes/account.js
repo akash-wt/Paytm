@@ -99,8 +99,8 @@ router.put("/transfer", authMiddleware, async (req, res) => {
   } finally {
     session.endSession();
   }
-});
 
-router.post("/transfer", (req, res) => {});
+  
+});
 
 module.exports = router;

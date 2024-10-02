@@ -28,6 +28,7 @@ router.get("/balance", authMiddleware, async (req, res) => {
 });
 
 // transfer amount
+
 const transferSchema = z.object({
   to: z.string().refine((val) => mongoose.Types.ObjectId.isValid(val), {
     message: "Invalid ObjectId",
@@ -51,38 +52,53 @@ router.put("/transfer", authMiddleware, async (req, res) => {
       .json({ message: "input validation error", error: error.errors });
   }
 
+  const session = await mongoose.startSession();
   try {
-    const fromUser = await Account.findOne({ userId: req.userId });
-    const toUser = await Account.findOne({ userId: data.to });
+    session.startTransaction();
+
+    const fromUser = await Account.findOne({ userId: req.userId }).session(
+      session
+    );
+    const toUser = await Account.findOne({ userId: data.to }).session(session);
 
     if (!fromUser) {
+      await session.abortTransaction();
       return res.status(404).json({ message: "Sender not found." });
     }
     if (!toUser) {
+      await session.abortTransaction();
       return res.status(404).json({ message: "Receiver not found." });
     }
 
     if (fromUser.balance < data.amount) {
+      await session.abortTransaction();
       return res.status(400).json({ message: "Insufficient balance." });
     }
 
-    await Account.updateOne(
-      { userId: req.userId },
-      { $inc: { balance: -data.amount } }
-    );
+    // Perform the transfer
 
     await Account.updateOne(
-      { userId: data.to },
-      { $inc: { balance: data.amount } }
-    );
+      { userId: req.userId },
+      { $inc: { balance: -data.amount } },
+      { session }
+    ),
+      await Account.updateOne(
+        { userId: data.to },
+        { $inc: { balance: data.amount } },
+        { session }
+      );
+
+    await session.commitTransaction();
+    return res.status(200).json({ message: "Transfer successful", data });
   } catch (e) {
     console.error("Error processing transfer:", e);
+    await session.abortTransaction();
     return res
       .status(500)
       .json({ message: "Internal server error", error: e.message });
+  } finally {
+    session.endSession();
   }
-
-  return res.status(200).json({ message: "Transfer successful", data });
 });
 
 router.post("/transfer", (req, res) => {});

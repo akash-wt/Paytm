@@ -8,6 +8,8 @@ const User = require("../Models/user");
 const Account = require("../Models/Balence");
 const authMiddleware = require("../authorization");
 
+
+
 const signupSchema = z.object({
   username: z.string().email(),
   password: z.string().min(6),
@@ -141,7 +143,7 @@ router.post("/update", authMiddleware, async (req, res) => {
 // bulk 
 
 
-router.get("/bulk", async (req, res) => {
+router.get("/bulk", authMiddleware, async (req, res) => {
   const filter= req.query.filter || " ";
   try {
     let users = await User.find({

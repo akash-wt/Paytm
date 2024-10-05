@@ -5,9 +5,11 @@ import { Button } from "../components/Button";
 import { Bottomwarning } from "../components/BottomWarning";
 import { useState } from "react";
 import axios from "axios";
+import { useNavigate } from "react-router-dom";
 
 
 function SignUp() {
+  const navigate=useNavigate();
   const [formData, setFormData] = useState({
     firstName: "",
     lastName: "",
@@ -22,8 +24,8 @@ function SignUp() {
 
   function handleButton() {
     axios.post("http://localhost:8080/api/v1/user/signup", { ...formData }).then((response) => {
-      // console.log(response.data.token);
       localStorage.setItem("token",response.data.token);
+      navigate('/dashboard');
     }).catch((error) => {
       console.error("There was an error!", error);
     });
